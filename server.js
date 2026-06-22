@@ -1,4 +1,5 @@
 const express = require("express");
+const { v4: uuidv4 } = require("uuid");
 const app = express();
 app.use(express.json());
 
@@ -15,8 +16,13 @@ app.post("/webhook", (req, res) => {
         return res.status(400).json({ error: "Invalid payload" });
     }
 
-    latestDonation = body;
-    console.log(`[Donasi] ${body.donator_name} - Rp${body.amount_raw}`);
+    // ✅ Tambah ID unik setiap donasi masuk
+    latestDonation = {
+        ...body,
+        id: uuidv4(),
+    };
+
+    console.log(`[Donasi] ${body.donator_name} - Rp${body.amount_raw} | ID: ${latestDonation.id}`);
     res.sendStatus(200);
 });
 
@@ -26,7 +32,16 @@ app.get("/latest", (req, res) => {
     if (req.query.secret !== SECRET) {
         return res.status(403).json({ error: "Forbidden" });
     }
-    res.json(latestDonation || {});
+
+    if (!latestDonation) {
+        return res.json({});
+    }
+
+    // ✅ Kirim donasi, lalu langsung hapus supaya tidak diproses ulang
+    const donation = latestDonation;
+    latestDonation = null;
+
+    res.json(donation);
 });
 
 // Health check
